@@ -1,9 +1,9 @@
-## Project Title: "Library Management System with Enhanced Features"
+# Project Title: "Library Management System with Enhanced Features"
 
-# Project Overview:
+## Project Overview:
 Develop a Library Management System (LMS) that includes the following features and adheres to the best practices outlined in the CERT Java Coding Standard. The system should utilize object-oriented programming principles, demonstrate effective use of inheritance, interfaces, and generics, incorporate exception handling and multithreading, and include a graphical user interface (GUI) using JavaFX.
 
-#Project Requirements:
+## Project Requirements:
 1. Class Design and Object-Oriented Principles:
 - Library System Structure:
 Create a base class LibraryItem with common attributes such as title, author, and ISBN. Derive subclasses Book and Magazine from LibraryItem.
@@ -42,13 +42,13 @@ Implement event handling to respond to user actions.
 Ensure that your code follows the CERT Java Coding Standard guidelines, focusing on expressions, numeric types, characters and strings, object orientation, and exceptional behavior.
 
 
-# Deliverables:
+## Deliverables:
 
 - Complete source code with clear documentation and comments.
 - A user manual explaining how to use the application.
 - A brief report describing the design choices, challenges faced, and how they were addressed.
 
-# Evaluation Criteria:
+## Evaluation Criteria:
 - Proper implementation of OOP principles and design patterns.
 - Effective use of inheritance, interfaces, and generics.
 - Robust exception handling and multithreading.
