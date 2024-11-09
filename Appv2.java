@@ -102,6 +102,12 @@ class Database {
     }
 }
 
+class AccountNotFoundException extends Exception {
+    public AccountNotFoundException(String message) {
+        super(message);
+    }
+}
+
 public class App extends Application {
     private User currentUser;
     private Database database = new Database();
@@ -157,12 +163,16 @@ public class App extends Application {
     }
 
     private void signIn(String username, String password, Stage primaryStage) {
-        Optional<User> userOpt = database.getUser(username, password);
-        if (userOpt.isPresent()) {
-            currentUser = userOpt.get();
-            showExpenseTracker(primaryStage);
-        } else {
-            showAlert("Error", "Invalid username or password.");
+        try {
+            Optional<User> userOpt = database.getUser(username, password);
+            if (userOpt.isPresent()) {
+                currentUser = userOpt.get();
+                showExpenseTracker(primaryStage);
+            } else {
+                throw new AccountNotFoundException("Account not found.");
+            }
+        } catch (AccountNotFoundException e) {
+            showAlert("Error", e.getMessage());
         }
     }
 
@@ -210,6 +220,10 @@ public class App extends Application {
 
         Scene trackerScene = new Scene(vbox, 400, 400);
         primaryStage.setScene(trackerScene);
+
+        if (currentUser instanceof NormalUser) {
+            startAdPopups(primaryStage);
+        }
     }
 
     private void addExpense(TextField amountField, TextField categoryField, TextField additionalFeatureField) {
@@ -231,6 +245,24 @@ public class App extends Application {
         }
     }
 
+    private void startAdPopups(Stage primaryStage) {
+        Timer adTimer = new Timer();
+        adTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                javafx.application.Platform.runLater(() -> showAdPopup(primaryStage));
+            }
+        }, 10000, new Random().nextInt(20000) + 10000);  // Random interval between 10s and 30s
+    }
+
+    private void showAdPopup(Stage primaryStage) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Ad");
+        alert.setHeaderText("Limited User Features");
+        alert.setContentText("As a normal user, you have limited features. Upgrade to Premium!");
+        alert.showAndWait();
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -243,6 +275,7 @@ public class App extends Application {
         launch(args);
     }
 }
+
 class Expense {
     private double amount;
     private String category;
@@ -275,7 +308,7 @@ class Expense {
 
     @Override
     public String toString() {
-        return String.format("$%.2f - %s%s", amount, category, 
-                             additionalFeature != null ? " - " + additionalFeature : "");
+        return String.format("$%.2f - %s%s", amount, category,
+                additionalFeature != null ? " - " + additionalFeature : "");
     }
 }
