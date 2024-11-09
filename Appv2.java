@@ -1,5 +1,4 @@
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -15,10 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-// User class hierarchy
 abstract class User {
     protected String username;
     protected String password;
@@ -92,34 +88,6 @@ class PremiumUser extends User {
     }
 }
 
-// Thread-safe ExpenseInputTask for multiple user inputs
-class ExpenseInputTask implements Runnable {
-    private final User user;
-    private final double amount;
-    private final String category;
-    private final String additionalFeature;
-    private static final Lock lock = new ReentrantLock();
-
-    public ExpenseInputTask(User user, double amount, String category, String additionalFeature) {
-        this.user = user;
-        this.amount = amount;
-        this.category = category;
-        this.additionalFeature = additionalFeature;
-    }
-
-    @Override
-    public void run() {
-        lock.lock();
-        try {
-            user.addExpense(amount, category, additionalFeature);
-            System.out.printf("Added expense $%.2f for %s\n", amount, category);
-        } finally {
-            lock.unlock();
-        }
-    }
-}
-
-// Database class for storing users
 class Database {
     private List<User> users = new ArrayList<>();
 
@@ -134,7 +102,6 @@ class Database {
     }
 }
 
-// Main application class
 public class App extends Application {
     private User currentUser;
     private Database database = new Database();
@@ -153,12 +120,23 @@ public class App extends Application {
         passwordField.setPromptText("Password");
         Button signUpButton = new Button("Sign Up");
         Button signInButton = new Button("Sign In");
-        ToggleButton premiumToggle = new ToggleButton("Premium Account");
 
-        premiumToggle.setOnAction(e -> isPremium = premiumToggle.isSelected());
+        // Radio buttons for account type
+        RadioButton normalAccountRadio = new RadioButton("Normal Account");
+        RadioButton premiumAccountRadio = new RadioButton("Premium Account");
+        ToggleGroup accountTypeGroup = new ToggleGroup();
+        normalAccountRadio.setToggleGroup(accountTypeGroup);
+        premiumAccountRadio.setToggleGroup(accountTypeGroup);
+        normalAccountRadio.setSelected(true); // Default selection
 
-        HBox loginBox = new HBox(10, usernameField, passwordField, premiumToggle, signUpButton, signInButton);
-        VBox vbox = new VBox(10, loginBox);
+        // Set account type based on radio button selection
+        accountTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            isPremium = premiumAccountRadio.isSelected();
+        });
+
+        VBox signUpOptions = new VBox(5, normalAccountRadio, premiumAccountRadio);
+        HBox loginBox = new HBox(10, usernameField, passwordField, signUpButton, signInButton);
+        VBox vbox = new VBox(10, signUpOptions, loginBox);
         Scene loginScene = new Scene(vbox, 400, 200);
 
         signUpButton.setOnAction(e -> signUp(usernameField.getText(), passwordField.getText()));
@@ -241,7 +219,7 @@ public class App extends Application {
             String additionalFeature = additionalFeatureField != null ? additionalFeatureField.getText() : null;
 
             if (!category.isEmpty()) {
-                new Thread(new ExpenseInputTask(currentUser, amount, category, additionalFeature)).start();
+                currentUser.addExpense(amount, category, additionalFeature);
                 expenseListItems.add(String.format("$%.2f - %s%s",
                         amount, category, additionalFeature != null ? " - " + additionalFeature : ""));
                 amountField.clear();
