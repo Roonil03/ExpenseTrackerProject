@@ -30,7 +30,7 @@ abstract class User {
         this.expenses = Collections.synchronizedList(new ArrayList<>());
     }
 
-    public abstract void addExpense(double amount, String category);
+    public abstract void addExpense(double amount, String category, String additionalFeature);
 
     public String getUsername() {
         return username;
@@ -43,7 +43,7 @@ class NormalUser extends User {
     }
 
     @Override
-    public void addExpense(double amount, String category) {
+    public void addExpense(double amount, String category, String additionalFeature) {
         expenses.add(new Expense(amount, category));
     }
 }
@@ -54,8 +54,8 @@ class PremiumUser extends User {
     }
 
     @Override
-    public void addExpense(double amount, String category) {
-        expenses.add(new Expense(amount, category));
+    public void addExpense(double amount, String category, String additionalFeature) {
+        expenses.add(new Expense(amount, category, additionalFeature));
     }
 
     public void displayMonthlyGraph(Stage primaryStage) {
@@ -97,19 +97,21 @@ class ExpenseInputTask implements Runnable {
     private final User user;
     private final double amount;
     private final String category;
+    private final String additionalFeature;
     private static final Lock lock = new ReentrantLock();
 
-    public ExpenseInputTask(User user, double amount, String category) {
+    public ExpenseInputTask(User user, double amount, String category, String additionalFeature) {
         this.user = user;
         this.amount = amount;
         this.category = category;
+        this.additionalFeature = additionalFeature;
     }
 
     @Override
     public void run() {
         lock.lock();
         try {
-            user.addExpense(amount, category);
+            user.addExpense(amount, category, additionalFeature);
             System.out.printf("Added expense $%.2f for %s\n", amount, category);
         } finally {
             lock.unlock();
@@ -117,15 +119,15 @@ class ExpenseInputTask implements Runnable {
     }
 }
 
-// Generic class for user data storage
-class UserData<T extends User> {
-    private List<T> users = new ArrayList<>();
+// Database class for storing users
+class Database {
+    private List<User> users = new ArrayList<>();
 
-    public void addUser(T user) {
+    public void addUser(User user) {
         users.add(user);
     }
 
-    public Optional<T> getUser(String username, String password) {
+    public Optional<User> getUser(String username, String password) {
         return users.stream()
                 .filter(user -> user.getUsername().equals(username) && user.password.equals(password))
                 .findFirst();
@@ -133,11 +135,12 @@ class UserData<T extends User> {
 }
 
 // Main application class
-public class Appv2 extends Application {
+public class App extends Application {
     private User currentUser;
-    private UserData<User> userData = new UserData<>();
+    private Database database = new Database();
     private ObservableList<String> expenseListItems;
     private ListView<String> expenseListView;
+    private boolean isPremium = false;
 
     @Override
     public void start(Stage primaryStage) {
@@ -150,8 +153,11 @@ public class Appv2 extends Application {
         passwordField.setPromptText("Password");
         Button signUpButton = new Button("Sign Up");
         Button signInButton = new Button("Sign In");
+        ToggleButton premiumToggle = new ToggleButton("Premium Account");
 
-        HBox loginBox = new HBox(10, usernameField, passwordField, signUpButton, signInButton);
+        premiumToggle.setOnAction(e -> isPremium = premiumToggle.isSelected());
+
+        HBox loginBox = new HBox(10, usernameField, passwordField, premiumToggle, signUpButton, signInButton);
         VBox vbox = new VBox(10, loginBox);
         Scene loginScene = new Scene(vbox, 400, 200);
 
@@ -167,13 +173,13 @@ public class Appv2 extends Application {
             showAlert("Invalid Input", "Username and password cannot be empty.");
             return;
         }
-        User user = username.endsWith("@premium") ? new PremiumUser(username, password) : new NormalUser(username, password);
-        userData.addUser(user);
+        User user = isPremium ? new PremiumUser(username, password) : new NormalUser(username, password);
+        database.addUser(user);
         showAlert("Success", "User registered successfully!");
     }
 
     private void signIn(String username, String password, Stage primaryStage) {
-        Optional<User> userOpt = userData.getUser(username, password);
+        Optional<User> userOpt = database.getUser(username, password);
         if (userOpt.isPresent()) {
             currentUser = userOpt.get();
             showExpenseTracker(primaryStage);
@@ -190,10 +196,19 @@ public class Appv2 extends Application {
         amountField.setPromptText("Amount");
         TextField categoryField = new TextField();
         categoryField.setPromptText("Category");
+
+        TextField additionalFeatureField = null;
+        if (currentUser instanceof PremiumUser) {
+            additionalFeatureField = new TextField();
+            additionalFeatureField.setPromptText("Additional Feature (Premium)");
+        }
+
         Button addButton = new Button("Add Expense");
         Button showChartButton = new Button("Show Monthly Chart");
+        Button signOutButton = new Button("Sign Out");
 
-        addButton.setOnAction(e -> addExpense(amountField, categoryField));
+        final TextField finalAdditionalFeatureField = additionalFeatureField;
+        addButton.setOnAction(e -> addExpense(amountField, categoryField, finalAdditionalFeatureField));
         showChartButton.setOnAction(e -> {
             if (currentUser instanceof PremiumUser) {
                 ((PremiumUser) currentUser).displayMonthlyGraph(primaryStage);
@@ -202,23 +217,36 @@ public class Appv2 extends Application {
             }
         });
 
-        HBox inputBox = new HBox(10, amountField, categoryField, addButton, showChartButton);
-        VBox vbox = new VBox(10, inputBox, expenseListView);
+        signOutButton.setOnAction(e -> {
+            currentUser = null;
+            primaryStage.setScene(primaryStage.getScene());
+            showAlert("Sign Out", "You have been signed out.");
+        });
+
+        HBox inputBox = currentUser instanceof PremiumUser
+                ? new HBox(10, amountField, categoryField, finalAdditionalFeatureField, addButton, showChartButton)
+                : new HBox(10, amountField, categoryField, addButton, showChartButton);
+
+        VBox vbox = new VBox(10, inputBox, expenseListView, signOutButton);
         vbox.setPadding(new Insets(10));
 
         Scene trackerScene = new Scene(vbox, 400, 400);
         primaryStage.setScene(trackerScene);
     }
 
-    private void addExpense(TextField amountField, TextField categoryField) {
+    private void addExpense(TextField amountField, TextField categoryField, TextField additionalFeatureField) {
         try {
             double amount = Double.parseDouble(amountField.getText());
             String category = categoryField.getText();
+            String additionalFeature = additionalFeatureField != null ? additionalFeatureField.getText() : null;
+
             if (!category.isEmpty()) {
-                new Thread(new ExpenseInputTask(currentUser, amount, category)).start();
-                expenseListItems.add(String.format("$%.2f - %s", amount, category));
+                new Thread(new ExpenseInputTask(currentUser, amount, category, additionalFeature)).start();
+                expenseListItems.add(String.format("$%.2f - %s%s",
+                        amount, category, additionalFeature != null ? " - " + additionalFeature : ""));
                 amountField.clear();
                 categoryField.clear();
+                if (additionalFeatureField != null) additionalFeatureField.clear();
             }
         } catch (NumberFormatException ex) {
             showAlert("Invalid Input", "Please enter a valid number for the amount.");
