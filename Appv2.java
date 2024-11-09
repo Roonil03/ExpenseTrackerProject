@@ -1,4 +1,5 @@
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -14,259 +15,294 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-abstract class User {
-    protected String username;
-    protected String password;
-    protected List<Expense> expenses;
-
-    public User(String username, String password) {
-        this.username = username;
-        this.password = password;
-        this.expenses = Collections.synchronizedList(new ArrayList<>());
-    }
-
-    public abstract void addExpense(double amount, String category, String additionalFeature);
-
-    public String getUsername() {
-        return username;
-    }
-}
-
-class NormalUser extends User {
-    public NormalUser(String username, String password) {
-        super(username, password);
-    }
-
-    @Override
-    public void addExpense(double amount, String category, String additionalFeature) {
-        expenses.add(new Expense(amount, category));
-    }
-}
-
-class PremiumUser extends User {
-    public PremiumUser(String username, String password) {
-        super(username, password);
-    }
-
-    @Override
-    public void addExpense(double amount, String category, String additionalFeature) {
-        expenses.add(new Expense(amount, category, additionalFeature));
-    }
-
-    public void displayMonthlyGraph(Stage primaryStage) {
-        CategoryAxis xAxis = new CategoryAxis();
-        xAxis.setLabel("Category");
-        NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel("Amount");
-
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setTitle("Monthly Expenses by Category");
-
-        Map<String, Double> categoryTotals = new HashMap<>();
-        for (Expense expense : expenses) {
-            categoryTotals.merge(expense.getCategory(), expense.getAmount(), Double::sum);
-        }
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Expenses");
-
-        for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
-            series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-        }
-        barChart.getData().add(series);
-
-        BorderPane chartLayout = new BorderPane();
-        chartLayout.setCenter(barChart);
-        Button backButton = new Button("Back to List");
-        backButton.setOnAction(e -> App.showExpenseTracker(primaryStage)); // Back to main screen
-        chartLayout.setBottom(backButton);
-        BorderPane.setMargin(backButton, new Insets(10));
-
-        Scene chartScene = new Scene(chartLayout, 600, 400);
-        primaryStage.setScene(chartScene);
-    }
-}
-
-class Database {
-    private List<User> users = new ArrayList<>();
-
-    public void addUser(User user) {
-        users.add(user);
-    }
-
-    public Optional<User> getUser(String username, String password) {
-        return users.stream()
-                .filter(user -> user.getUsername().equals(username) && user.password.equals(password))
-                .findFirst();
-    }
-}
-
-class UserNotRegisteredException extends Exception {
-    public UserNotRegisteredException(String message) {
+// Custom Exception for non-registered user login attempts
+class UserNotFoundException extends Exception {
+    public UserNotFoundException(String message) {
         super(message);
     }
 }
 
+// User class with account type (normal or premium)
+class User {
+    private String username;
+    private String password;
+    private boolean isPremium;
+
+    public User(String username, String password, boolean isPremium) {
+        this.username = username;
+        this.password = password;
+        this.isPremium = isPremium;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public boolean isPremium() {
+        return isPremium;
+    }
+}
+
 public class App extends Application {
-    private User currentUser;
-    private Database database = new Database();
+    private List<Expense> expenses = new ArrayList<>();
     private ObservableList<String> expenseListItems;
-    private ListView<String> expenseListView;
-    private boolean isPremium = false;
+    private boolean isDarkMode = false;
+    private User currentUser = null; // Current logged-in user
+    private Map<String, User> userDatabase = new HashMap<>(); // For user sign-up and sign-in
+    private Lock expenseLock = new ReentrantLock(); // To ensure thread safety for expense list
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Expense Tracker");
+        // Initial Sign-up Stage
+        primaryStage.setTitle("Expense Tracker - Sign Up");
 
-        // Sign Up and Login UI
         TextField usernameField = new TextField();
         usernameField.setPromptText("Username");
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
+
+        RadioButton normalUserRadio = new RadioButton("Normal User");
+        RadioButton premiumUserRadio = new RadioButton("Premium User");
+        ToggleGroup group = new ToggleGroup();
+        normalUserRadio.setToggleGroup(group);
+        premiumUserRadio.setToggleGroup(group);
+        normalUserRadio.setSelected(true);
+
         Button signUpButton = new Button("Sign Up");
-        Button signInButton = new Button("Sign In");
+        Button signInButton = new Button("Already have an account? Sign In");
 
-        // Radio buttons for account type
-        RadioButton normalAccountRadio = new RadioButton("Normal Account");
-        RadioButton premiumAccountRadio = new RadioButton("Premium Account");
-        ToggleGroup accountTypeGroup = new ToggleGroup();
-        normalAccountRadio.setToggleGroup(accountTypeGroup);
-        premiumAccountRadio.setToggleGroup(accountTypeGroup);
-        normalAccountRadio.setSelected(true); // Default selection
+        signUpButton.setOnAction(e -> signUp(primaryStage, usernameField, passwordField, normalUserRadio.isSelected()));
+        signInButton.setOnAction(e -> showSignInStage(primaryStage));
 
-        // Set account type based on radio button selection
-        accountTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-            isPremium = premiumAccountRadio.isSelected();
-        });
+        VBox signUpLayout = new VBox(10, usernameField, passwordField, normalUserRadio, premiumUserRadio, signUpButton, signInButton);
+        signUpLayout.setPadding(new Insets(10));
 
-        VBox signUpOptions = new VBox(5, normalAccountRadio, premiumAccountRadio);
-        HBox loginBox = new HBox(10, usernameField, passwordField, signUpButton, signInButton);
-        VBox vbox = new VBox(10, signUpOptions, loginBox);
-        Scene loginScene = new Scene(vbox, 400, 200);
-
-        signUpButton.setOnAction(e -> showSignUpStage(primaryStage, usernameField.getText(), passwordField.getText()));
-        signInButton.setOnAction(e -> showSignInStage(primaryStage, usernameField.getText(), passwordField.getText()));
-
-        primaryStage.setScene(loginScene);
+        Scene signUpScene = new Scene(signUpLayout, 300, 200);
+        primaryStage.setScene(signUpScene);
         primaryStage.show();
     }
 
-    private void showSignUpStage(Stage primaryStage, String username, String password) {
+    private void signUp(Stage primaryStage, TextField usernameField, PasswordField passwordField, boolean isPremium) {
+        String username = usernameField.getText();
+        String password = passwordField.getText();
         if (username.isEmpty() || password.isEmpty()) {
-            showAlert("Invalid Input", "Username and password cannot be empty.");
+            showAlert("Error", "Username or Password cannot be empty.");
             return;
         }
 
-        User user = isPremium ? new PremiumUser(username, password) : new NormalUser(username, password);
-        database.addUser(user);
-        showAlert("Success", "User registered successfully!");
+        User newUser = new User(username, password, isPremium);
+        userDatabase.put(username, newUser);
 
-        // After signup, show the sign-in stage
-        showSignInStage(primaryStage, username, password);
+        // Switch to Sign-in Stage
+        showSignInStage(primaryStage);
     }
 
-    private void showSignInStage(Stage primaryStage, String username, String password) {
-        try {
-            Optional<User> userOpt = database.getUser(username, password);
-            if (userOpt.isPresent()) {
-                currentUser = userOpt.get();
-                showExpenseTracker(primaryStage);
-            } else {
-                throw new UserNotRegisteredException("User not registered.");
-            }
-        } catch (UserNotRegisteredException e) {
-            showAlert("Error", e.getMessage());
+    private void showSignInStage(Stage primaryStage) {
+        // Sign In Stage
+        primaryStage.setTitle("Expense Tracker - Sign In");
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+
+        Button signInButton = new Button("Sign In");
+        Button signUpButton = new Button("No account? Sign Up");
+
+        signInButton.setOnAction(e -> signIn(usernameField, passwordField, primaryStage));
+        signUpButton.setOnAction(e -> showSignUpStage(primaryStage));
+
+        VBox signInLayout = new VBox(10, usernameField, passwordField, signInButton, signUpButton);
+        signInLayout.setPadding(new Insets(10));
+
+        Scene signInScene = new Scene(signInLayout, 300, 200);
+        primaryStage.setScene(signInScene);
+        primaryStage.show();
+    }
+
+    private void signIn(TextField usernameField, PasswordField passwordField, Stage primaryStage) {
+        String username = usernameField.getText();
+        String password = passwordField.getText();
+
+        if (!userDatabase.containsKey(username)) {
+            showAlert("Sign-in Error", "User not found.");
+            return;
+        }
+
+        User user = userDatabase.get(username);
+        if (!user.getPassword().equals(password)) {
+            showAlert("Sign-in Error", "Incorrect password.");
+            return;
+        }
+
+        currentUser = user;
+
+        // Proceed to expense tracker UI based on user type
+        if (currentUser.isPremium()) {
+            showPremiumView(primaryStage);
+        } else {
+            showNormalView(primaryStage);
         }
     }
 
-    public static void showExpenseTracker(Stage primaryStage) {
-        // Expense tracker logic remains the same...
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
-    private void addExpense(TextField amountField, TextField categoryField, TextField additionalFeatureField) {
+    private void showPremiumView(Stage primaryStage) {
+        // Create UI components for the expense tracker for Premium Users
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount");
+        TextField categoryField = new TextField();
+        categoryField.setPromptText("Category");
+        Button addButton = new Button("Add Expense");
+        Button clearButton = new Button("Clear All");
+        Button showChartButton = new Button("Show Bar Chart");
+        Button signOutButton = new Button("Sign Out");
+
+        expenseListItems = FXCollections.observableArrayList();
+        ListView<String> expenseListView = new ListView<>(expenseListItems);
+
+        HBox inputBox = new HBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton);
+        inputBox.setPadding(new Insets(10));
+
+        VBox vbox = new VBox(10, inputBox, expenseListView);
+        vbox.setPadding(new Insets(10));
+
+        Scene premiumScene = new Scene(vbox, 400, 400);
+
+        addButton.setOnAction(e -> addExpense(amountField, categoryField));
+        clearButton.setOnAction(e -> clearExpenses());
+        showChartButton.setOnAction(e -> showBarChart(primaryStage));
+        signOutButton.setOnAction(e -> showSignInStage(primaryStage));
+
+        primaryStage.setScene(premiumScene);
+        primaryStage.show();
+    }
+
+    private void showNormalView(Stage primaryStage) {
+        // Create UI components for the expense tracker for Normal Users
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount");
+        TextField categoryField = new TextField();
+        categoryField.setPromptText("Category");
+        Button addButton = new Button("Add Expense");
+        Button clearButton = new Button("Clear All");
+        Button showChartButton = new Button("Show Bar Chart (Premium Only)");
+        Button signOutButton = new Button("Sign Out");
+
+        expenseListItems = FXCollections.observableArrayList();
+        ListView<String> expenseListView = new ListView<>(expenseListItems);
+
+        HBox inputBox = new HBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton);
+        inputBox.setPadding(new Insets(10));
+
+        VBox vbox = new VBox(10, inputBox, expenseListView);
+        vbox.setPadding(new Insets(10));
+
+        Scene normalScene = new Scene(vbox, 400, 400);
+
+        addButton.setOnAction(e -> addExpense(amountField, categoryField));
+        clearButton.setOnAction(e -> clearExpenses());
+        showChartButton.setOnAction(e -> showAlert("Upgrade", "Upgrade to Premium to access the chart feature."));
+        signOutButton.setOnAction(e -> showSignInStage(primaryStage));
+
+        // Show random ads for normal users
+        showRandomAds(primaryStage);
+
+        primaryStage.setScene(normalScene);
+        primaryStage.show();
+    }
+
+    private void addExpense(TextField amountField, TextField categoryField) {
         try {
             double amount = Double.parseDouble(amountField.getText());
             String category = categoryField.getText();
-            String additionalFeature = additionalFeatureField != null ? additionalFeatureField.getText() : null;
-
             if (!category.isEmpty()) {
-                currentUser.addExpense(amount, category, additionalFeature);
-                expenseListItems.add(String.format("$%.2f - %s%s",
-                        amount, category, additionalFeature != null ? " - " + additionalFeature : ""));
+                expenseLock.lock(); // Ensure thread safety when modifying expenses
+                try {
+                    Expense expense = new Expense(amount, category);
+                    expenses.add(expense);
+                    expenseListItems.add(String.format("$%.2f - %s", amount, category));
+                } finally {
+                    expenseLock.unlock();
+                }
                 amountField.clear();
                 categoryField.clear();
-                if (additionalFeatureField != null) additionalFeatureField.clear();
             }
         } catch (NumberFormatException ex) {
             showAlert("Invalid Input", "Please enter a valid number for the amount.");
         }
     }
 
-    private void startAdPopups(Stage primaryStage) {
-        Timer adTimer = new Timer();
-        adTimer.schedule(new TimerTask() {
+    private void clearExpenses() {
+        expenseLock.lock(); // Ensure thread safety when clearing expenses
+        try {
+            expenses.clear();
+            expenseListItems.clear();
+        } finally {
+            expenseLock.unlock();
+        }
+    }
+
+    private void showBarChart(Stage primaryStage) {
+        // Create the axes
+        CategoryAxis xAxis = new CategoryAxis();
+        xAxis.setLabel("Category");
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setLabel("Amount");
+
+        // Create the bar chart
+        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
+        barChart.setTitle("Expenses by Category");
+
+        // Create a map to aggregate expenses by category
+        Map<String, Double> categoryTotals = new HashMap<>();
+
+        // Aggregate expenses by category
+        for (Expense expense : expenses) {
+            categoryTotals.merge(expense.getCategory(), expense.getAmount(), Double::sum);
+        }
+
+        // Populate the bar chart data
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Expenses");
+
+        for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
+            series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+        }
+
+        barChart.getData().add(series);
+
+        // Create a layout for the bar chart
+        BorderPane chartLayout = new BorderPane();
+        chartLayout.setCenter(barChart);
+
+        Scene chartScene = new Scene(chartLayout, 600, 400);
+        primaryStage.setScene(chartScene);
+    }
+
+    private void showRandomAds(Stage primaryStage) {
+        // Simulate random ads for normal users
+        new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                javafx.application.Platform.runLater(() -> showAdPopup(primaryStage));
+                Platform.runLater(() -> showAlert("Ad", "Upgrade to Premium for more features!"));
             }
-        }, 10000, new Random().nextInt(20000) + 10000);  // Random interval between 10s and 30s
-    }
-
-    private void showAdPopup(Stage primaryStage) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Ad");
-        alert.setHeaderText("Limited User Features");
-        alert.setContentText("As a normal user, you have limited features. Upgrade to Premium!");
-        alert.showAndWait();
-    }
-
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        }, 5000, 10000); // Show ads at random intervals
     }
 
     public static void main(String[] args) {
         launch(args);
-    }
-}
-
-class Expense {
-    private double amount;
-    private String category;
-    private String additionalFeature;
-
-    // Constructor for NormalUser expenses (without additionalFeature)
-    public Expense(double amount, String category) {
-        this.amount = amount;
-        this.category = category;
-    }
-
-    // Constructor for PremiumUser expenses (with additionalFeature)
-    public Expense(double amount, String category, String additionalFeature) {
-        this.amount = amount;
-        this.category = category;
-        this.additionalFeature = additionalFeature;
-    }
-
-    public double getAmount() {
-        return amount;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public String getAdditionalFeature() {
-        return additionalFeature;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("$%.2f - %s%s", amount, category,
-                additionalFeature != null ? " - " + additionalFeature : "");
     }
 }
