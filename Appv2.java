@@ -79,7 +79,7 @@ class PremiumUser extends User {
         BorderPane chartLayout = new BorderPane();
         chartLayout.setCenter(barChart);
         Button backButton = new Button("Back to List");
-        backButton.setOnAction(e -> primaryStage.setScene(primaryStage.getScene())); // Back to main screen
+        backButton.setOnAction(e -> showExpenseTracker(primaryStage)); // Back to main screen
         chartLayout.setBottom(backButton);
         BorderPane.setMargin(backButton, new Insets(10));
 
@@ -102,8 +102,8 @@ class Database {
     }
 }
 
-class AccountNotFoundException extends Exception {
-    public AccountNotFoundException(String message) {
+class UserNotRegisteredException extends Exception {
+    public UserNotRegisteredException(String message) {
         super(message);
     }
 }
@@ -145,33 +145,37 @@ public class App extends Application {
         VBox vbox = new VBox(10, signUpOptions, loginBox);
         Scene loginScene = new Scene(vbox, 400, 200);
 
-        signUpButton.setOnAction(e -> signUp(usernameField.getText(), passwordField.getText()));
-        signInButton.setOnAction(e -> signIn(usernameField.getText(), passwordField.getText(), primaryStage));
+        signUpButton.setOnAction(e -> showSignUpStage(primaryStage, usernameField.getText(), passwordField.getText()));
+        signInButton.setOnAction(e -> showSignInStage(primaryStage, usernameField.getText(), passwordField.getText()));
 
         primaryStage.setScene(loginScene);
         primaryStage.show();
     }
 
-    private void signUp(String username, String password) {
+    private void showSignUpStage(Stage primaryStage, String username, String password) {
         if (username.isEmpty() || password.isEmpty()) {
             showAlert("Invalid Input", "Username and password cannot be empty.");
             return;
         }
+
         User user = isPremium ? new PremiumUser(username, password) : new NormalUser(username, password);
         database.addUser(user);
         showAlert("Success", "User registered successfully!");
+
+        // After signup, show the sign-in stage
+        showSignInStage(primaryStage, username, password);
     }
 
-    private void signIn(String username, String password, Stage primaryStage) {
+    private void showSignInStage(Stage primaryStage, String username, String password) {
         try {
             Optional<User> userOpt = database.getUser(username, password);
             if (userOpt.isPresent()) {
                 currentUser = userOpt.get();
                 showExpenseTracker(primaryStage);
             } else {
-                throw new AccountNotFoundException("Account not found.");
+                throw new UserNotRegisteredException("User not registered.");
             }
-        } catch (AccountNotFoundException e) {
+        } catch (UserNotRegisteredException e) {
             showAlert("Error", e.getMessage());
         }
     }
@@ -205,11 +209,7 @@ public class App extends Application {
             }
         });
 
-        signOutButton.setOnAction(e -> {
-            currentUser = null;
-            primaryStage.setScene(primaryStage.getScene());
-            showAlert("Sign Out", "You have been signed out.");
-        });
+        signOutButton.setOnAction(e -> showSignInStage(primaryStage, "", ""));
 
         HBox inputBox = currentUser instanceof PremiumUser
                 ? new HBox(10, amountField, categoryField, finalAdditionalFeatureField, addButton, showChartButton)
