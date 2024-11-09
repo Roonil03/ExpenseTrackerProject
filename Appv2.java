@@ -243,3 +243,39 @@ public class App extends Application {
         launch(args);
     }
 }
+class Expense {
+    private double amount;
+    private String category;
+    private String additionalFeature;
+
+    // Constructor for NormalUser expenses (without additionalFeature)
+    public Expense(double amount, String category) {
+        this.amount = amount;
+        this.category = category;
+    }
+
+    // Constructor for PremiumUser expenses (with additionalFeature)
+    public Expense(double amount, String category, String additionalFeature) {
+        this.amount = amount;
+        this.category = category;
+        this.additionalFeature = additionalFeature;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getAdditionalFeature() {
+        return additionalFeature;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("$%.2f - %s%s", amount, category, 
+                             additionalFeature != null ? " - " + additionalFeature : "");
+    }
+}
