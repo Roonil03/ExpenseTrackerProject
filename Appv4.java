@@ -102,8 +102,8 @@ public class App extends Application {
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
 
-        RadioButton normalUserRadio = new RadioButton("Normal User");
-        RadioButton premiumUserRadio = new RadioButton("Premium User");
+        RadioButton normalUserRadio = new RadioButton("Premium User");
+        RadioButton premiumUserRadio = new RadioButton("Normal User");
         ToggleGroup group = new ToggleGroup();
         normalUserRadio.setToggleGroup(group);
         premiumUserRadio.setToggleGroup(group);
