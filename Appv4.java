@@ -20,8 +20,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 // Expense class definition
 class Expense {
-    private double amount;
-    private String category;
+    private final double amount;
+    private final String category;
 
     public Expense(double amount, String category) {
         this.amount = amount;
@@ -52,11 +52,12 @@ class WrongPasswordException extends Exception {
 }
 
 // User class with account type (normal or premium) and expense tracking
-class User {
-    private String username;
-    private String password;
-    private boolean isPremium;
-    private List<Expense> expenses; // List to store user's expenses
+class User implements Runnable {
+    private final String username;
+    private final String password;
+    private final boolean isPremium;
+    private final List<Expense> expenses; // List to store user's expenses
+    private final Lock expenseLock = new ReentrantLock();
 
     public User(String username, String password, boolean isPremium) {
         this.username = username;
@@ -82,15 +83,34 @@ class User {
     }
 
     public void addExpense(Expense expense) {
-        this.expenses.add(expense);
+        expenseLock.lock();
+        try {
+            expenses.add(expense);
+        } finally {
+            expenseLock.unlock();
+        }
+    }
+
+    public void clearExpenses() {
+        expenseLock.lock();
+        try {
+            expenses.clear();
+        } finally {
+            expenseLock.unlock();
+        }
+    }
+
+    @Override
+    public void run() {
+        // In a real application, you might include logic for handling user-specific tasks.
     }
 }
 
 public class App extends Application {
     private ObservableList<String> expenseListItems;
     private User currentUser = null; // Current logged-in user
-    private List<User> userDatabase = new ArrayList<>(); // ArrayList to store users
-    private Lock expenseLock = new ReentrantLock(); // To ensure thread safety for expense list
+    private final List<User> userDatabase = new ArrayList<>(); // ArrayList to store users
+    private final Lock userDatabaseLock = new ReentrantLock(); // Lock for user database
 
     @Override
     public void start(Stage primaryStage) {
@@ -131,8 +151,16 @@ public class App extends Application {
             return;
         }
 
-        User newUser = new User(username, password, isPremium);
-        userDatabase.add(newUser);
+        userDatabaseLock.lock();
+        try {
+            User newUser = new User(username, password, isPremium);
+            userDatabase.add(newUser);
+
+            Thread userThread = new Thread(newUser); // Start a new thread for each user
+            userThread.start();
+        } finally {
+            userDatabaseLock.unlock();
+        }
 
         // Switch to Sign-in Stage
         showSignInStage(primaryStage);
@@ -171,19 +199,24 @@ public class App extends Application {
         String username = usernameField.getText();
         String password = passwordField.getText();
 
-        User user = findUserByUsername(username);
-        if (user == null) {
-            throw new UserNotFoundException("User not found.");
-        }
-        if (!user.getPassword().equals(password)) {
-            throw new WrongPasswordException("Incorrect password.");
-        }
+        userDatabaseLock.lock();
+        try {
+            User user = findUserByUsername(username);
+            if (user == null) {
+                throw new UserNotFoundException("User not found.");
+            }
+            if (!user.getPassword().equals(password)) {
+                throw new WrongPasswordException("Incorrect password.");
+            }
 
-        currentUser = user;
-        if (currentUser.isPremium()) {
-            showPremiumView(primaryStage);
-        } else {
-            showNormalView(primaryStage);
+            currentUser = user;
+            if (currentUser.isPremium()) {
+                showPremiumView(primaryStage);
+            } else {
+                showNormalView(primaryStage);
+            }
+        } finally {
+            userDatabaseLock.unlock();
         }
     }
 
@@ -262,14 +295,9 @@ public class App extends Application {
             double amount = Double.parseDouble(amountField.getText());
             String category = categoryField.getText();
             if (!category.isEmpty()) {
-                expenseLock.lock();
-                try {
-                    Expense expense = new Expense(amount, category);
-                    currentUser.addExpense(expense); // Add expense to current user's list
-                    expenseListItems.add(String.format("$%.2f - %s", amount, category));
-                } finally {
-                    expenseLock.unlock();
-                }
+                Expense expense = new Expense(amount, category);
+                currentUser.addExpense(expense);
+                expenseListItems.add(String.format("$%.2f - %s", amount, category));
                 amountField.clear();
                 categoryField.clear();
             }
@@ -279,13 +307,8 @@ public class App extends Application {
     }
 
     private void clearExpenses() {
-        expenseLock.lock();
-        try {
-            currentUser.getExpenses().clear();
-            expenseListItems.clear();
-        } finally {
-            expenseLock.unlock();
-        }
+        currentUser.clearExpenses();
+        expenseListItems.clear();
     }
 
     private void signOut(Stage primaryStage) {
@@ -315,8 +338,13 @@ public class App extends Application {
         }
         barChart.getData().add(series);
 
+        Button backButton = new Button("Back"); // Back button to return to expense list
+        backButton.setOnAction(e -> setupExpenseTracker(primaryStage, currentUser.isPremium()));
+
         BorderPane chartLayout = new BorderPane();
         chartLayout.setCenter(barChart);
+        chartLayout.setBottom(backButton);
+        BorderPane.setMargin(backButton, new Insets(10));
 
         Scene chartScene = new Scene(chartLayout, 600, 400);
         primaryStage.setScene(chartScene);
