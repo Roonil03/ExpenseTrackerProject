@@ -102,8 +102,8 @@ public class App extends Application {
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
 
-        RadioButton normalUserRadio = new RadioButton("Premium User");
-        RadioButton premiumUserRadio = new RadioButton("Normal User");
+        RadioButton normalUserRadio = new RadioButton("Normal User");
+        RadioButton premiumUserRadio = new RadioButton("Premium User");
         ToggleGroup group = new ToggleGroup();
         normalUserRadio.setToggleGroup(group);
         premiumUserRadio.setToggleGroup(group);
@@ -224,6 +224,9 @@ public class App extends Application {
         expenseListItems = FXCollections.observableArrayList();
         ListView<String> expenseListView = new ListView<>(expenseListItems);
 
+        // Load current user's expenses into the list view
+        loadUserExpenses();
+
         HBox inputBox = new HBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton);
         inputBox.setPadding(new Insets(10));
 
@@ -241,10 +244,17 @@ public class App extends Application {
                 showAlert("Upgrade", "Upgrade to Premium to access the chart feature.");
             }
         });
-        signOutButton.setOnAction(e -> showSignInStage(primaryStage));
+        signOutButton.setOnAction(e -> signOut(primaryStage));
 
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    private void loadUserExpenses() {
+        expenseListItems.clear();
+        for (Expense expense : currentUser.getExpenses()) {
+            expenseListItems.add(String.format("$%.2f - %s", expense.getAmount(), expense.getCategory()));
+        }
     }
 
     private void addExpense(TextField amountField, TextField categoryField) {
@@ -271,11 +281,16 @@ public class App extends Application {
     private void clearExpenses() {
         expenseLock.lock();
         try {
-            currentUser.getExpenses().clear(); // Clear current user's expense list
+            currentUser.getExpenses().clear();
             expenseListItems.clear();
         } finally {
             expenseLock.unlock();
         }
+    }
+
+    private void signOut(Stage primaryStage) {
+        currentUser = null; // Clear current user
+        showSignInStage(primaryStage); // Return to the sign-in stage
     }
 
     private void showBarChart(Stage primaryStage) {
