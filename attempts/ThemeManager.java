@@ -1,5 +1,6 @@
 import javafx.scene.Scene;
 import javafx.scene.paint.Color;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 
 public class ThemeManager {
@@ -25,7 +26,7 @@ public class ThemeManager {
     }
 
     // Apply dark theme to all nodes within the scene
-    private static void applyDarkTheme(Scene scene) {
+    public static void applyDarkTheme(Scene scene) {
         for (var node : scene.getRoot().getChildrenUnmodifiable()) {
             if (node instanceof Region region) {
                 region.setStyle("-fx-background-color: #333333; -fx-text-fill: #FFFFFF;");
@@ -34,7 +35,7 @@ public class ThemeManager {
     }
 
     // Apply light theme to all nodes within the scene
-    private static void applyLightTheme(Scene scene) {
+    public static void applyLightTheme(Scene scene) {
         for (var node : scene.getRoot().getChildrenUnmodifiable()) {
             if (node instanceof Region region) {
                 region.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000;");
