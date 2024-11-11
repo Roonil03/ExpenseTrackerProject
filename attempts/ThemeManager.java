@@ -8,18 +8,18 @@ public class ThemeManager {
     // Method to toggle theme and apply it to the entire stage
     public static void toggleTheme(Stage stage) {
         isDarkMode = !isDarkMode;
-        applyTheme(stage.getScene(), stage);
+        applyTheme(stage.getScene(), stage);  // Apply theme both to Scene and Stage
     }
 
     // Method to apply the current theme to the entire scene and stage
     public static void applyTheme(Scene scene, Stage stage) {
         if (isDarkMode) {
             stage.setOpacity(0.9);  // Dim the stage slightly for dark mode effect
-            scene.setFill(Color.DARKSLATEGRAY);  // Apply dark background
+            scene.setFill(Color.DARKSLATEGRAY);  // Apply dark background to the scene
             applyDarkTheme(scene);
         } else {
             stage.setOpacity(1.0);  // Reset opacity for light mode
-            scene.setFill(Color.LIGHTGRAY);  // Apply light background
+            scene.setFill(Color.LIGHTGRAY);  // Apply light background to the scene
             applyLightTheme(scene);
         }
     }

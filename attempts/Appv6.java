@@ -106,7 +106,6 @@ class Expense {
 
 // View for premium users
 class PremiumView {
-    class PremiumView {
     public void display(Stage primaryStage, User user) {
         setupExpenseTracker(primaryStage, user, true);
     }
@@ -129,16 +128,16 @@ class PremiumView {
         showChartButton.setOnAction(e -> showBarChart(primaryStage, user));
         signOutButton.setOnAction(e -> signOut(primaryStage));
 
-        // Using HBox to layout components horizontally
+        // Using HBox for horizontal layout
         HBox inputBox = new HBox(10, amountField, categoryField);
         HBox buttonBox = new HBox(10, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
-        
+
         inputBox.setPadding(new Insets(10));
         buttonBox.setPadding(new Insets(10));
 
         VBox vbox = new VBox(10, inputBox, buttonBox);  // The main VBox
         Scene scene = new Scene(vbox, 600, 200);  // Adjust size accordingly
-        ThemeManager.applyTheme(scene);
+        ThemeManager.applyTheme(scene, primaryStage);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -242,7 +241,7 @@ class NormalView {
 
         VBox vbox = new VBox(10, inputBox, buttonBox);  // The main VBox
         Scene scene = new Scene(vbox, 600, 200);  // Adjust size accordingly
-        ThemeManager.applyTheme(scene);
+        ThemeManager.applyTheme(scene, primaryStage);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
