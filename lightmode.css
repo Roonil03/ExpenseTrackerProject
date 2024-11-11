@@ -1,0 +1,9 @@
+/* Light Mode Styles */
+.root {
+    -fx-background-color: #D3D3D3; /* Set background to light gray */
+}
+
+.region {
+    -fx-background-color: #FFFFFF; /* Light background for regions */
+    -fx-text-fill: #000000;         /* Black text */
+}

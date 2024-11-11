@@ -1,0 +1,9 @@
+/* Dark Mode Styles */
+.root {
+    -fx-background-color: #000000; /* Set background to black */
+}
+
+.region {
+    -fx-background-color: #333333; /* Dark background for regions */
+    -fx-text-fill: #FFFFFF;         /* White text */
+}
