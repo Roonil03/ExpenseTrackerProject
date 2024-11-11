@@ -86,7 +86,7 @@ The code above demonstrates the application of various Java concepts. Here's how
         private final String password;
         private final List<Expense> expenses;
         ```
-    - <i>Static Keyword:</i> <br>UserDatabase is static to maintain a centralized map of users across all instances.
+    - <i>Static Keyword:</i> <br>UserDatabase is static to maintain a centralized map of users across all instances.<br>The DarkMode toggle is also static to centralize it for the entire program.
         ```
         private static boolean isDarkMode = false;  
         ```
