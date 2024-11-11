@@ -18,7 +18,6 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-// Expense class definition
 class Expense {
     private final double amount;
     private final String category;
@@ -37,26 +36,23 @@ class Expense {
     }
 }
 
-// Custom Exception for non-registered user login attempts
 class UserNotFoundException extends Exception {
     public UserNotFoundException(String message) {
         super(message);
     }
 }
 
-// Custom Exception for incorrect password
 class WrongPasswordException extends Exception {
     public WrongPasswordException(String message) {
         super(message);
     }
 }
 
-// User class with account type (normal or premium) and expense tracking
 class User implements Runnable {
     private final String username;
     private final String password;
     private final boolean isPremium;
-    private final List<Expense> expenses; // List to store user's expenses
+    private final List<Expense> expenses;
     private final Lock expenseLock = new ReentrantLock();
 
     public User(String username, String password, boolean isPremium) {
@@ -102,19 +98,18 @@ class User implements Runnable {
 
     @Override
     public void run() {
-        // In a real application, you might include logic for handling user-specific tasks.
+        //Leaving this empty for now, since the the program is working on a singular device. Would be useful if there are multiple devices having the same program
     }
 }
 
 public class App extends Application {
     private ObservableList<String> expenseListItems;
-    private User currentUser = null; // Current logged-in user
-    private final List<User> userDatabase = new ArrayList<>(); // ArrayList to store users
-    private final Lock userDatabaseLock = new ReentrantLock(); // Lock for user database
+    private User currentUser = null; 
+    private final List<User> userDatabase = new ArrayList<>(); 
+    private final Lock userDatabaseLock = new ReentrantLock(); 
 
     @Override
     public void start(Stage primaryStage) {
-        // Initial Sign-up Stage
         primaryStage.setTitle("Expense Tracker - Sign Up");
 
         TextField usernameField = new TextField();
@@ -156,18 +151,16 @@ public class App extends Application {
             User newUser = new User(username, password, isPremium);
             userDatabase.add(newUser);
 
-            Thread userThread = new Thread(newUser); // Start a new thread for each user
+            Thread userThread = new Thread(newUser); 
             userThread.start();
         } finally {
             userDatabaseLock.unlock();
         }
 
-        // Switch to Sign-in Stage
         showSignInStage(primaryStage);
     }
 
     private void showSignInStage(Stage primaryStage) {
-        // Sign In Stage
         primaryStage.setTitle("Expense Tracker - Sign In");
 
         TextField usernameField = new TextField();
@@ -185,7 +178,7 @@ public class App extends Application {
                 showAlert("Sign-in Error", ex.getMessage());
             }
         });
-        signUpButton.setOnAction(e -> start(primaryStage)); // Show sign-up scene again
+        signUpButton.setOnAction(e -> start(primaryStage)); 
 
         VBox signInLayout = new VBox(10, usernameField, passwordField, signInButton, signUpButton);
         signInLayout.setPadding(new Insets(10));
@@ -257,7 +250,6 @@ public class App extends Application {
         expenseListItems = FXCollections.observableArrayList();
         ListView<String> expenseListView = new ListView<>(expenseListItems);
 
-        // Load current user's expenses into the list view
         loadUserExpenses();
 
         HBox inputBox = new HBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton);
@@ -312,8 +304,8 @@ public class App extends Application {
     }
 
     private void signOut(Stage primaryStage) {
-        currentUser = null; // Clear current user
-        showSignInStage(primaryStage); // Return to the sign-in stage
+        currentUser = null; 
+        showSignInStage(primaryStage); 
     }
 
     private void showBarChart(Stage primaryStage) {
@@ -326,7 +318,7 @@ public class App extends Application {
         barChart.setTitle("Expenses by Category");
 
         Map<String, Double> categoryTotals = new HashMap<>();
-        for (Expense expense : currentUser.getExpenses()) { // Use current user's expenses
+        for (Expense expense : currentUser.getExpenses()) { 
             categoryTotals.merge(expense.getCategory(), expense.getAmount(), Double::sum);
         }
 
@@ -338,7 +330,7 @@ public class App extends Application {
         }
         barChart.getData().add(series);
 
-        Button backButton = new Button("Back"); // Back button to return to expense list
+        Button backButton = new Button("Back");
         backButton.setOnAction(e -> setupExpenseTracker(primaryStage, currentUser.isPremium()));
 
         BorderPane chartLayout = new BorderPane();
