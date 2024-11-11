@@ -106,6 +106,7 @@ class Expense {
 
 // View for premium users
 class PremiumView {
+    class PremiumView {
     public void display(Stage primaryStage, User user) {
         setupExpenseTracker(primaryStage, user, true);
     }
@@ -128,10 +129,15 @@ class PremiumView {
         showChartButton.setOnAction(e -> showBarChart(primaryStage, user));
         signOutButton.setOnAction(e -> signOut(primaryStage));
 
-        VBox vbox = new VBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
-        vbox.setPadding(new Insets(10));
+        // Using HBox to layout components horizontally
+        HBox inputBox = new HBox(10, amountField, categoryField);
+        HBox buttonBox = new HBox(10, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
+        
+        inputBox.setPadding(new Insets(10));
+        buttonBox.setPadding(new Insets(10));
 
-        Scene scene = new Scene(vbox, 400, 400);
+        VBox vbox = new VBox(10, inputBox, buttonBox);  // The main VBox
+        Scene scene = new Scene(vbox, 600, 200);  // Adjust size accordingly
         ThemeManager.applyTheme(scene);
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -141,11 +147,13 @@ class PremiumView {
         try {
             double amount = Double.parseDouble(amountField.getText());
             String category = categoryField.getText();
-            if (!category.isEmpty()) {
+            if (!category.isEmpty() && (user.isPremium() || Utility.isValidCategory(category))) {
                 Expense expense = new Expense(amount, category);
                 user.getExpenses().add(expense);
                 amountField.clear();
                 categoryField.clear();
+            } else {
+                showAlert("Invalid Category", "Please enter a valid category.");
             }
         } catch (NumberFormatException ex) {
             showAlert("Invalid Input", "Please enter a valid number for the amount.");
@@ -201,6 +209,7 @@ class PremiumView {
     }
 }
 
+// NormalView (modified for horizontal layout)
 class NormalView {
     public void display(Stage primaryStage, User user) {
         setupExpenseTracker(primaryStage, user, false);
@@ -224,10 +233,15 @@ class NormalView {
         showChartButton.setOnAction(e -> showBarChart(primaryStage, user));
         signOutButton.setOnAction(e -> signOut(primaryStage));
 
-        VBox vbox = new VBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
-        vbox.setPadding(new Insets(10));
+        // Using HBox for horizontal layout
+        HBox inputBox = new HBox(10, amountField, categoryField);
+        HBox buttonBox = new HBox(10, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
 
-        Scene scene = new Scene(vbox, 400, 400);
+        inputBox.setPadding(new Insets(10));
+        buttonBox.setPadding(new Insets(10));
+
+        VBox vbox = new VBox(10, inputBox, buttonBox);  // The main VBox
+        Scene scene = new Scene(vbox, 600, 200);  // Adjust size accordingly
         ThemeManager.applyTheme(scene);
         primaryStage.setScene(scene);
         primaryStage.show();

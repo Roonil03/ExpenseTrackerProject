@@ -1,24 +1,25 @@
 import javafx.scene.Scene;
-import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class ThemeManager {
     private static boolean isDarkMode = false;
 
-    // Method to toggle theme and apply it to the scene
+    // Method to toggle theme and apply it to the entire stage
     public static void toggleTheme(Stage stage) {
         isDarkMode = !isDarkMode;
-        applyTheme(stage.getScene());
+        applyTheme(stage.getScene(), stage);
     }
 
-    // Method to apply the current theme to the entire scene
-    public static void applyTheme(Scene scene) {
+    // Method to apply the current theme to the entire scene and stage
+    public static void applyTheme(Scene scene, Stage stage) {
         if (isDarkMode) {
-            scene.setFill(Color.DARKSLATEGRAY);
+            stage.setOpacity(0.9);  // Dim the stage slightly for dark mode effect
+            scene.setFill(Color.DARKSLATEGRAY);  // Apply dark background
             applyDarkTheme(scene);
         } else {
-            scene.setFill(Color.LIGHTGRAY);
+            stage.setOpacity(1.0);  // Reset opacity for light mode
+            scene.setFill(Color.LIGHTGRAY);  // Apply light background
             applyLightTheme(scene);
         }
     }
