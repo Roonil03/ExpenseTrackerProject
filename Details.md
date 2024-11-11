@@ -1,10 +1,10 @@
 # OOP Lab Project
 ### Made by Aryan <i>"Roonil03"</i> Vivek, Aaryan Paranjape and Aryan Chandra
-Project Date = 14th November<br>
+Project Date = 14th November, 2024<br>
 
 Programming Languages Used:
-- Cascading Style Sheets
 - Java along with JavaFX
+- Cascading Style Sheets <i>(CSS)</i>
 
 ## Java Concepts Covered
 The code above demonstrates the application of various Java concepts. Here's how each is implemented:
