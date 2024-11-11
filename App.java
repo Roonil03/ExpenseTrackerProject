@@ -22,13 +22,11 @@ import javafx.application.Platform;
 // import ThemeManager.java;
 // import Utility.java;
 
-// Interface for user authentication
 interface UserAuthentication {
     boolean authenticateUser(String username, String password);
-    boolean authenticateUser(StringBuffer usernameBuffer, String password); // Overloaded method
+    boolean authenticateUser(StringBuffer usernameBuffer, String password);
 }
 
-// Abstract class for user roles
 abstract class UserRole {
     private final boolean isPremium;
 
@@ -40,55 +38,46 @@ abstract class UserRole {
         return isPremium;
     }
 
-    // Abstract method for showing expense views, to be overridden in subclasses
     public abstract void showView(Stage primaryStage);
 }
 
 class Database<T> {
-    private final List<T> items = Collections.synchronizedList(new ArrayList<>()); // Thread-safe list
+    private final List<T> items = Collections.synchronizedList(new ArrayList<>()); 
     
-    // Add an item to the database
     public synchronized void addItem(T item) {
         items.add(item);
     }
 
-    // Find an item by a predicate
     public synchronized T findItem(Predicate<T> predicate) {
         for (T item : items) {
             if (predicate.test(item)) {
                 return item;
             }
         }
-        return null; // Return null if no matching item is found
+        return null;
     }
 
-    // Get all items in the database
     public List<T> getAllItems() {
         return new ArrayList<>(items);
     }
 }
 
 class UserDatabase {
-    // Using a thread-safe ConcurrentHashMap to store user data
     private static final Map<String, User> userDatabase = new ConcurrentHashMap<>();
 
-    // Method to add a new user to the in-memory database
     public static synchronized void addUser(User user) {
         userDatabase.put(user.getUsername(), user);
     }
 
-    // Method to find a user by username
     public static synchronized User findUserByUsername(String username) {
-        return userDatabase.get(username);  // Return null if no matching user is found
+        return userDatabase.get(username);  
     }
 
-    // Method to get all users (for debugging purposes)
     public static Map<String, User> getAllUsers() {
         return userDatabase;
     }
 }
 
-// User class inheriting from UserRole and implementing UserAuthentication
 class User extends UserRole implements UserAuthentication {
     private final String username;
     private final String password;
@@ -125,7 +114,6 @@ class User extends UserRole implements UserAuthentication {
 
     @Override
     public void showView(Stage primaryStage) {
-        // Determines which view to show based on user type
         if (isPremium()) {
             new PremiumView().display(primaryStage, this);
         } else {
@@ -134,7 +122,6 @@ class User extends UserRole implements UserAuthentication {
     }
 }
 
-// Expense class
 class Expense {
     private final double amount;
     private final String category;
@@ -153,8 +140,6 @@ class Expense {
     }
 }
 
-// View for premium users
-// Modify the PremiumView and NormalView to listen to the user’s expense changes
 class PremiumView {
     private final ObservableList<String> expenseItems = FXCollections.observableArrayList();
     
@@ -174,7 +159,7 @@ class PremiumView {
         Button signOutButton = new Button("Sign Out");
         Button toggleThemeButton = new Button("Toggle Theme");
 
-        ListView<String> expenseListView = new ListView<>(expenseItems); // ListView to show expenses
+        ListView<String> expenseListView = new ListView<>(expenseItems); 
 
         toggleThemeButton.setOnAction(e -> ThemeManager.toggleTheme(primaryStage));
         addButton.setOnAction(e -> addExpense(user, amountField, categoryField));
@@ -194,18 +179,17 @@ class PremiumView {
         primaryStage.setScene(scene);
         primaryStage.show();
         
-        // Start a background thread to track and update user’s expenses
         Thread updateExpensesThread = new Thread(() -> {
             while (true) {
-                Platform.runLater(() -> loadExpenses(user));  // Update UI with current user expenses
+                Platform.runLater(() -> loadExpenses(user));  
                 try {
-                    Thread.sleep(1000);  // Update every second (adjust as necessary)
+                    Thread.sleep(1000);  
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         });
-        updateExpensesThread.setDaemon(true);  // Allow thread to exit when application exits
+        updateExpensesThread.setDaemon(true);
         updateExpensesThread.start();
     }
 
@@ -216,7 +200,7 @@ class PremiumView {
             if (!category.isEmpty() && (user.isPremium() /*|| Utility.isValidCategory(category)*/)) {
                 Expense expense = new Expense(amount, category);
                 user.getExpenses().add(expense);
-                expenseItems.add("Category: " + category + ", Amount: $" + amount); // Update ListView
+                expenseItems.add("Category: " + category + ", Amount: $" + amount); 
                 amountField.clear();
                 categoryField.clear();
             } else {
@@ -229,7 +213,7 @@ class PremiumView {
 
     private void clearExpenses(User user) {
         user.getExpenses().clear();
-        expenseItems.clear(); // Clear ListView items
+        expenseItems.clear(); 
     }
 
     private void loadExpenses(User user) {
@@ -304,7 +288,7 @@ class NormalView {
         Button signOutButton = new Button("Sign Out");
         Button toggleThemeButton = new Button("Toggle Theme");
 
-        ListView<String> expenseListView = new ListView<>(expenseItems); // ListView to show expenses
+        ListView<String> expenseListView = new ListView<>(expenseItems); 
 
         toggleThemeButton.setOnAction(e -> ThemeManager.toggleTheme(primaryStage));
         addButton.setOnAction(e -> addExpense(user, amountField, categoryField));
@@ -324,18 +308,17 @@ class NormalView {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Start a background thread to track and update user’s expenses
         Thread updateExpensesThread = new Thread(() -> {
             while (true) {
-                Platform.runLater(() -> loadExpenses(user));  // Update UI with current user expenses
+                Platform.runLater(() -> loadExpenses(user));
                 try {
-                    Thread.sleep(1000);  // Update every second (adjust as necessary)
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         });
-        updateExpensesThread.setDaemon(true);  // Allow thread to exit when application exits
+        updateExpensesThread.setDaemon(true);
         updateExpensesThread.start();
     }
 
@@ -346,7 +329,7 @@ class NormalView {
             if (!category.isEmpty() && (user.isPremium() || Utility.isValidCategory(category))) {
                 Expense expense = new Expense(amount, category);
                 user.getExpenses().add(expense);
-                expenseItems.add("Category: " + category + ", Amount: $" + amount); // Update ListView
+                expenseItems.add("Category: " + category + ", Amount: $" + amount); 
                 amountField.clear();
                 categoryField.clear();
             } else {
@@ -359,7 +342,7 @@ class NormalView {
 
     private void clearExpenses(User user) {
         user.getExpenses().clear();
-        expenseItems.clear(); // Clear ListView items
+        expenseItems.clear();
     }
 
     private void loadExpenses(User user) {
@@ -500,21 +483,19 @@ public class App extends Application {
         String username = usernameField.getText();
         String password = passwordField.getText();
 
-        // Find user by username in the UserDatabase
         User user = UserDatabase.findUserByUsername(username);
         if (user == null) {
             showAlert("Sign-in Error", "User not found.");
             return;
         }
 
-        // Authenticate user
         if (!user.authenticateUser(username, password)) {
             showAlert("Sign-in Error", "Incorrect password.");
             return;
         }
 
         currentUser = user;
-        user.showView(primaryStage);  // Show user view (either Premium or Normal)
+        user.showView(primaryStage);
     }
 
     private void showAlert(String title, String message) {
