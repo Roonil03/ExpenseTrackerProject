@@ -1,6 +1,15 @@
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+class ThemeApplicationException extends Exception {
+    public ThemeApplicationException(String message) {
+        super(message);
+    }
+    public ThemeApplicationException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
 public class ThemeManager {
     private static boolean isDarkMode = false;  
 
@@ -21,12 +30,20 @@ public class ThemeManager {
     
     // Method to toggle theme and apply it to the entire stage
     public static void toggleTheme(Stage stage) {
-        isDarkMode = !isDarkMode;
-        applyTheme(stage.getScene(),stage);  // Apply theme to the Scene
+        try {
+            isDarkMode = !isDarkMode;
+            applyTheme(stage.getScene(),stage);
+        } 
+        catch (ThemeApplicationException e) {
+            System.err.println("Error applying theme: " + e.getMessage());
+        }
     }
 
     // Method to apply the current theme to the scene
-    public static void applyTheme(Scene scene, Stage primaryStage){
+    public static void applyTheme(Scene scene, Stage primaryStage)throws ThemeApplicationException {
+        if (scene == null || scene.getRoot() == null) {
+            throw new ThemeApplicationException("Scene or root container is null. Cannot apply theme.");
+        }
         scene.getStylesheets().clear(); 
         // String css = isDarkMode ? DARK_MODE_CSS : LIGHT_MODE_CSS;
         // scene.getRoot().setStyle(css);
