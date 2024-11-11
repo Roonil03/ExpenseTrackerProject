@@ -17,9 +17,9 @@ The code above demonstrates the application of various Java concepts. Here's how
         ```
 
     - <i>Type Conversions:</i> <br>String to double conversion in the addExpense method.
-    ```
-    double amount = Double.parseDouble(amountField.getText());
-    ```
+        ```
+        double amount = Double.parseDouble(amountField.getText());
+        ```
     - <i>Operators:</i> <br>Arithmetic (+, *) for adding expenses, logical operators for user role checks.
     - <i>Control Statements:</i>
         - if-else for user authentication.
