@@ -201,6 +201,104 @@ class PremiumView {
     }
 }
 
+class NormalView {
+    public void display(Stage primaryStage, User user) {
+        setupExpenseTracker(primaryStage, user, false);
+    }
+
+    private void setupExpenseTracker(Stage primaryStage, User user, boolean isPremium) {
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount");
+        TextField categoryField = new TextField();
+        categoryField.setPromptText("Category");
+
+        Button addButton = new Button("Add Expense");
+        Button clearButton = new Button("Clear All");
+        Button showChartButton = new Button("Show Bar Chart");
+        Button signOutButton = new Button("Sign Out");
+        Button toggleThemeButton = new Button("Toggle Theme");
+
+        toggleThemeButton.setOnAction(e -> ThemeManager.toggleTheme(primaryStage));
+        addButton.setOnAction(e -> addExpense(user, amountField, categoryField));
+        clearButton.setOnAction(e -> clearExpenses(user));
+        showChartButton.setOnAction(e -> showBarChart(primaryStage, user));
+        signOutButton.setOnAction(e -> signOut(primaryStage));
+
+        VBox vbox = new VBox(10, amountField, categoryField, addButton, clearButton, showChartButton, signOutButton, toggleThemeButton);
+        vbox.setPadding(new Insets(10));
+
+        Scene scene = new Scene(vbox, 400, 400);
+        ThemeManager.applyTheme(scene);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+    private void addExpense(User user, TextField amountField, TextField categoryField) {
+        try {
+            double amount = Double.parseDouble(amountField.getText());
+            String category = categoryField.getText();
+            if (!category.isEmpty() && Utility.isValidCategory(category)) {
+                Expense expense = new Expense(amount, category);
+                user.getExpenses().add(expense);
+                amountField.clear();
+                categoryField.clear();
+            } else {
+                showAlert("Invalid Category", "Please enter a valid category.");
+            }
+        } catch (NumberFormatException ex) {
+            showAlert("Invalid Input", "Please enter a valid number for the amount.");
+        }
+    }
+
+    private void clearExpenses(User user) {
+        user.getExpenses().clear();
+    }
+
+    private void showBarChart(Stage primaryStage, User user) {
+        CategoryAxis xAxis = new CategoryAxis();
+        xAxis.setLabel("Category");
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setLabel("Amount");
+
+        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
+        barChart.setTitle("Expenses by Category");
+
+        Map<String, Double> categoryTotals = new HashMap<>();
+        for (Expense expense : user.getExpenses()) {
+            categoryTotals.merge(expense.getCategory(), expense.getAmount(), Double::sum);
+        }
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Expenses");
+
+        for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
+            series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+        }
+        barChart.getData().add(series);
+
+        Button backButton = new Button("Back");
+        backButton.setOnAction(e -> user.showView(primaryStage));
+        Button toggleThemeButton = new Button("Toggle Theme");
+        toggleThemeButton.setOnAction(e -> ThemeManager.toggleTheme(primaryStage));
+
+        VBox vbox = new VBox(10, barChart, backButton, toggleThemeButton);
+        Scene chartScene = new Scene(vbox, 600, 400);
+        ThemeManager.applyTheme(chartScene);
+        primaryStage.setScene(chartScene);
+    }
+
+    private void signOut(Stage primaryStage) {
+        new App().showSignInStage(primaryStage);
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}
+
 public class App extends Application {
     private User currentUser = null;
     private final List<User> userDatabase = new ArrayList<>();
@@ -252,7 +350,7 @@ public class App extends Application {
         showSignInStage(primaryStage);
     }
 
-    private void showSignInStage(Stage primaryStage) {
+    public void showSignInStage(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker - Sign In");
 
         TextField usernameField = new TextField();
