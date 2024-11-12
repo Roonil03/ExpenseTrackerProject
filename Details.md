@@ -1,5 +1,5 @@
 # OOP Lab Project
-### Made by <a href="https://github.com/Roonil03">Roonil03</a>, <a href="https://github.com/galactonebulose">Aaryan Paranjape</a> and <a href="https://github.com/SUPERSUPERSUPERuser">SUPERSUPERSUPERuser</a>
+### Made by <a href="https://github.com/Roonil03">Roonil03</a>, <a href="https://github.com/galactonebulose">galactonebulose</a> and <a href="https://github.com/SUPERSUPERSUPERuser">SUPERSUPERSUPERuser</a>
 Project Date = 14th November, 2024<br>
 
 Programming Languages Used:
